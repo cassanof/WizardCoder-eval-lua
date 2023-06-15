@@ -26,6 +26,23 @@ def write_jsonl(filename: str, data: Iterable[Dict], append: bool = False):
                 fp.write((json.dumps(x) + "\n").encode('utf-8'))
 
 
+def stream_jsonl(filename: str) -> Iterable[Dict]:
+    """
+    Parses each jsonl line and yields it as a dictionary
+    """
+    if filename.endswith(".gz"):
+        with open(filename, "rb") as gzfp:
+            with gzip.open(gzfp, 'rt') as fp:
+                for line in fp:
+                    if any(not x.isspace() for x in line):
+                        yield json.loads(line)
+    else:
+        with open(filename, "r") as fp:
+            for line in fp:
+                if any(not x.isspace() for x in line):
+                    yield json.loads(line)
+
+
 def read_problems():
     dataset = datasets.load_dataset("nuprl/MultiPL-E", "humaneval-lua")["test"]
     problems = {}
@@ -35,6 +52,7 @@ def read_problems():
         problems[task_id] = {'prompt': prompt}
 
     return problems
+
 
 if __name__ == '__main__':
     problems = read_problems()
