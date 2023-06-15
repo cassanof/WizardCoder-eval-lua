@@ -6,7 +6,7 @@ import re
 from tqdm import tqdm
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
-from human_eval.data import write_jsonl, read_problems, stream_jsonl
+from utils import write_jsonl, read_problems
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -18,6 +18,7 @@ try:
         device = "mps"
 except:
     pass
+
 
 def extract_text(prompt, remove_lines=True):
     token = '\"\"\"'
@@ -34,15 +35,17 @@ def extract_text(prompt, remove_lines=True):
 
     return output
 
+
 def generate_prompt(input):
     INSTRUCTION = f"""Below is an instruction that describes a task. Write a response that appropriately completes the request.
 
 ### Instruction:
-Create a Python script for this problem:
+Create a Lua script for this problem:
 {input}
 
 ### Response:"""
     return INSTRUCTION
+
 
 def get_model(
     load_8bit: bool = False,
@@ -74,21 +77,23 @@ def get_model(
     model.eval()
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
-    
+
     return tokenizer, model
 
 
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--model', type=str, default='bigcode/starcoder', help="")
+    parser.add_argument('--model', type=str,
+                        default='bigcode/starcoder', help="")
     parser.add_argument('--output_path', type=str, help="")
     parser.add_argument('--start_index', type=int, default=0, help="")
     parser.add_argument('--end_index', type=int, default=164, help="")
     parser.add_argument('--temperature', type=float, default=0.8, help="")
     parser.add_argument('--N', type=int, default=200, help="")
     parser.add_argument('--max_len', type=int, default=512, help="")
-    parser.add_argument('--decoding_style', type=str, default='sampling', help="")
+    parser.add_argument('--decoding_style', type=str,
+                        default='sampling', help="")
     parser.add_argument('--num_seqs_per_iter', type=int, default=50, help='')
     parser.add_argument('--overwrite', action='store_true', help='')
 
@@ -119,7 +124,8 @@ def main():
 
     print(f"Loaded {args.model}.")
     for i in tqdm(range(num_samples), ncols=0, total=num_samples):
-        output_file = args.output_path + '/{}.jsonl'.format(args.start_index + i)
+        output_file = args.output_path + \
+            '/{}.jsonl'.format(args.start_index + i)
 
         if os.path.exists(output_file) and not args.overwrite:
             print(f'Skip {output_file} as it already exists')
@@ -132,7 +138,8 @@ def main():
 
         completion_seqs = []
 
-        encoding = tokenizer(prompt_batch, return_tensors="pt", truncation=True, max_length=args.max_len).to(device)
+        encoding = tokenizer(prompt_batch, return_tensors="pt",
+                             truncation=True, max_length=args.max_len).to(device)
 
         if args.decoding_style == 'sampling':
             loops = int(args.N / args.num_seqs_per_iter)
@@ -149,7 +156,8 @@ def main():
                     )
 
             if gen_tokens is not None:
-                gen_seqs = tokenizer.batch_decode(gen_tokens, skip_special_tokens=True)
+                gen_seqs = tokenizer.batch_decode(
+                    gen_tokens, skip_special_tokens=True)
             else:
                 gen_seqs = None
 
@@ -175,3 +183,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
